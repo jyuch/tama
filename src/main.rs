@@ -1,9 +1,6 @@
 use std::io::Write;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use tama::credential::add_credential;
-use crate::CredentialAction::Add;
-use crate::MainAction::Credential;
 
 #[derive(Parser, Debug)]
 #[clap(bin_name = "tama")]
@@ -15,11 +12,6 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum MainAction {
-    /// Manage credentials to use tomcat management.
-    Credential {
-        #[clap(subcommand)]
-        action: CredentialAction,
-    },
     /// Deploy a new application.
     Deploy {
         /// Context path.
@@ -57,30 +49,10 @@ enum MainAction {
     },
 }
 
-#[derive(Subcommand, Debug)]
-enum CredentialAction {
-    /// Add new credential to credential manager.
-    Add {
-        /// Tomcat manager base url.
-        url: String,
-        /// Tomcat user name.
-        user: String,
-    },
-    /// Remove specified credential from credential manager.
-    Remove {
-        /// Tomcat manager base url.
-        url: String,
-        /// Tomcat user name.
-        user: String,
-    },
-}
 
 impl MainAction {
     fn handle(self) -> i32 {
         match self {
-            Credential { action } => {
-                MainAction::handle_result(action.handle())
-            }
             _ => unimplemented!(),
         }
     }
@@ -92,23 +64,6 @@ impl MainAction {
                 eprintln!("{}", e);
                 1
             }
-        }
-    }
-}
-
-impl CredentialAction {
-    fn handle(self) -> Result<(), Box<dyn std::error::Error>> {
-        match self {
-            Add { url, user } => {
-                let mut buf = String::new();
-                print!("> ");
-                std::io::stdout().flush()?;
-                std::io::stdin().read_line(&mut buf)?;
-                let password = buf.trim();
-                let _ = add_credential(&url, &user, password)?;
-                Ok(())
-            }
-            _ => unimplemented!()
         }
     }
 }
