@@ -1,19 +1,10 @@
 use clap::{Parser, Subcommand};
-use std::io::Write;
 use std::path::PathBuf;
-use thiserror::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
-
-fn handle_error<T>(r: Result<T>) -> T {
-    match r {
-        Ok(t) => t,
-        Err(e) => {
-            println!("{}", e);
-            std::process::exit(1)
-        }
-    }
-}
+use tama::{
+    error::Result,
+    host_config::{get_host_config, HostConfig},
+    tomcat::list,
+};
 
 #[derive(Parser, Debug)]
 #[clap(bin_name = "tama")]
@@ -63,60 +54,29 @@ enum MainAction {
 }
 
 impl MainAction {
-    fn handle(self) -> i32 {
+    fn handle(self, config: &HostConfig) -> i32 {
         match self {
-            _ => unimplemented!(),
-        }
-    }
-
-    fn handle_result(result: Result<()>) -> i32 {
-        match result {
-            Ok(_) => 0,
-            Err(e) => {
-                eprintln!("{}", e);
-                1
+            MainAction::List => {
+                list(config);
+                0
             }
+            _ => 0,
         }
     }
 }
 
-#[derive(Debug, Error)]
-enum HostConfigError {
-    #[error("TOMCAT_HOST not set")]
-    HostError,
-    #[error("TOMCAT_USER not set")]
-    UserNameError,
-    #[error("TOMCAT_PASSWORD not set")]
-    PasswordError,
-}
-
-#[derive(Debug)]
-struct HostConfig {
-    host: String,
-    user_name: String,
-    password: String,
-}
-
-impl HostConfig {
-    fn new(host: String, user_name: String, password: String) -> HostConfig {
-        HostConfig {
-            host,
-            user_name,
-            password,
+fn handle_error<T>(r: Result<T>, error_exit: i32) -> T {
+    match r {
+        Ok(t) => t,
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(error_exit)
         }
     }
-}
-
-fn get_host_config() -> Result<HostConfig> {
-    let host = std::env::var("TOMCAT_HOST").map_err(|_| HostConfigError::HostError)?;
-    let user_name = std::env::var("TOMCAT_USER").map_err(|_| HostConfigError::UserNameError)?;
-    let password = std::env::var("TOMCAT_PASSWORD").map_err(|_| HostConfigError::PasswordError)?;
-    Ok(HostConfig::new(host, user_name, password))
 }
 
 fn main() {
-    let config = handle_error(get_host_config());
-    println!("{:?}", config);
-    let result = Cli::parse().action.handle();
+    let config = handle_error(get_host_config(), 1);
+    let result = Cli::parse().action.handle(&config);
     std::process::exit(result);
 }
