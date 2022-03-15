@@ -1,6 +1,8 @@
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::fs::File;
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct Context {
@@ -88,4 +90,26 @@ pub fn list(config: &HostConfig) {
             it.context_path, it.status, it.alive_session, it.context_directory, version
         );
     }
+}
+
+pub fn deploy(config: &HostConfig, context: &str, war: &Path) {
+    let file = File::open(war).unwrap();
+    let client = reqwest::blocking::Client::new();
+
+    let response = client
+        .put(config.host.join("/manager/text/deploy").unwrap())
+        .basic_auth(&config.user_name, Some(&config.password))
+        .query(&[("path", context)])
+        .body(file)
+        .send();
+
+    match response {
+        Ok(t) => {
+            let body = t.text().unwrap();
+            println!("{}", body);
+        }
+        Err(e) => {
+            println!("{}", e);
+        }
+    };
 }
