@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use tama::tomcat::deploy;
+use tama::tomcat::{deploy, undeploy};
 use tama::{
     error::Result,
     host_config::{get_host_config, HostConfig},
@@ -63,6 +63,10 @@ impl MainAction {
             }
             MainAction::Deploy { context, war } => {
                 deploy(config, &context, &war);
+                0
+            }
+            MainAction::Undeploy { context } => {
+                undeploy(config, &context);
                 0
             }
             _ => 0,

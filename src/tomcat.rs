@@ -39,6 +39,25 @@ static CONTEXT: Lazy<Regex> = Lazy::new(|| {
         .expect("Invalid regex")
 });
 
+pub fn list(config: &HostConfig) {
+    let contexts = get_contexts(config);
+
+    println!(
+        "{0: <20} | {1: <7} | {2: <7} | {3: <20} | {4: <10}",
+        "context path", "status", "session", "directory", "version"
+    );
+    for it in &contexts {
+        let version = match &it.context_version {
+            Some(v) => v,
+            None => "N/A",
+        };
+        println!(
+            "{0: <20} | {1: <7} | {2: >7} | {3: <20} | {4: <10}",
+            it.context_path, it.status, it.alive_session, it.context_directory, version
+        );
+    }
+}
+
 fn get_contexts(config: &HostConfig) -> Vec<Context> {
     let client = reqwest::blocking::Client::new();
 
@@ -74,25 +93,6 @@ fn get_contexts(config: &HostConfig) -> Vec<Context> {
     result
 }
 
-pub fn list(config: &HostConfig) {
-    let contexts = get_contexts(config);
-
-    println!(
-        "{0: <20} | {1: <7} | {2: <7} | {3: <20} | {4: <10}",
-        "context path", "status", "session", "directory", "version"
-    );
-    for it in &contexts {
-        let version = match &it.context_version {
-            Some(v) => v,
-            None => "N/A",
-        };
-        println!(
-            "{0: <20} | {1: <7} | {2: >7} | {3: <20} | {4: <10}",
-            it.context_path, it.status, it.alive_session, it.context_directory, version
-        );
-    }
-}
-
 pub fn deploy(config: &HostConfig, context: &str, war: &Path) {
     let file = File::open(war).unwrap();
     let client = reqwest::blocking::Client::new();
@@ -116,12 +116,33 @@ pub fn deploy(config: &HostConfig, context: &str, war: &Path) {
     };
 }
 
+pub fn undeploy(config: &HostConfig, context: &str) {
+    let client = reqwest::blocking::Client::new();
+
+    let response = client
+        .get(config.host.join("/manager/text/undeploy").unwrap())
+        .basic_auth(&config.user_name, Some(&config.password))
+        .query(&[("path", context)])
+        .send();
+
+    match response {
+        Ok(t) => {
+            let body = t.text().unwrap();
+            let res = handle_response(&body);
+            println!("{:?}", res);
+        }
+        Err(e) => {
+            println!("{}", e);
+        }
+    };
+}
+
 fn handle_response(response: &str) -> Response {
     if response.starts_with("OK - ") {
         Response::Ok(
             response
                 .strip_prefix("OK - ")
-                .and_then(|s| { s.strip_suffix("\r\n") })
+                .and_then(|s| s.strip_suffix("\r\n"))
                 .expect("Unexpected response from tomcat")
                 .to_string(),
         )
@@ -129,7 +150,7 @@ fn handle_response(response: &str) -> Response {
         Response::Fail(
             response
                 .strip_prefix("FAIL - ")
-                .and_then(|s| { s.strip_suffix("\r\n") })
+                .and_then(|s| s.strip_suffix("\r\n"))
                 .expect("Unexpected response from tomcat")
                 .to_string(),
         )
