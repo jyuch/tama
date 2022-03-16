@@ -1,3 +1,4 @@
+use crate::error::Response;
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -106,10 +107,31 @@ pub fn deploy(config: &HostConfig, context: &str, war: &Path) {
     match response {
         Ok(t) => {
             let body = t.text().unwrap();
-            println!("{}", body);
+            let res = handle_response(&body);
+            println!("{:?}", res);
         }
         Err(e) => {
             println!("{}", e);
         }
     };
+}
+
+fn handle_response(response: &str) -> Response {
+    if response.starts_with("OK - ") {
+        Response::Ok(
+            response
+                .strip_prefix("OK - ")
+                .and_then(|s| { s.strip_suffix("\r\n") })
+                .expect("Unexpected response from tomcat")
+                .to_string(),
+        )
+    } else {
+        Response::Fail(
+            response
+                .strip_prefix("FAIL - ")
+                .and_then(|s| { s.strip_suffix("\r\n") })
+                .expect("Unexpected response from tomcat")
+                .to_string(),
+        )
+    }
 }
