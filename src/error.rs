@@ -2,6 +2,6 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 
 #[derive(Debug)]
 pub enum Response {
-    Ok(String),
-    Fail(String),
+    Ok(Option<String>),
+    Fail(Option<String>),
 }

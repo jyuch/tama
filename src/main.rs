@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use tama::error::Response;
 use tama::tomcat::{deploy, undeploy};
 use tama::{
     error::Result,
@@ -55,37 +56,43 @@ enum MainAction {
 }
 
 impl MainAction {
-    fn handle(self, config: &HostConfig) -> i32 {
+    fn handle(self, config: &HostConfig) -> Result<Response> {
         match self {
-            MainAction::List => {
-                list(config);
-                0
-            }
-            MainAction::Deploy { context, war } => {
-                deploy(config, &context, &war);
-                0
-            }
-            MainAction::Undeploy { context } => {
-                undeploy(config, &context);
-                0
-            }
-            _ => 0,
+            MainAction::List => list(config),
+            MainAction::Deploy { context, war } => deploy(config, &context, &war),
+            MainAction::Undeploy { context } => undeploy(config, &context),
+            _ => unimplemented!(),
         }
     }
 }
 
-fn handle_error<T>(r: Result<T>, error_exit: i32) -> T {
+fn handle_error<T>(r: Result<T>) -> T {
     match r {
         Ok(t) => t,
         Err(e) => {
             println!("{}", e);
-            std::process::exit(error_exit)
+            std::process::exit(1)
         }
     }
 }
 
 fn main() {
-    let config = handle_error(get_host_config(), 1);
-    let result = Cli::parse().action.handle(&config);
-    std::process::exit(result);
+    let config = get_host_config();
+    let config = handle_error(config);
+
+    let result: Result<Response> = Cli::parse().action.handle(&config);
+    let response = handle_error(result);
+
+    match response {
+        tama::error::Response::Ok(Some(text)) => {
+            println!("OK - {}", text);
+            std::process::exit(0)
+        }
+        tama::error::Response::Ok(None) => std::process::exit(0),
+        tama::error::Response::Fail(Some(text)) => {
+            println!("FAIL - {}", text);
+            std::process::exit(1)
+        }
+        tama::error::Response::Fail(None) => std::process::exit(1),
+    }
 }

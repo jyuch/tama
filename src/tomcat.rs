@@ -1,4 +1,4 @@
-use crate::error::Response;
+use crate::error::{Response, Result};
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -34,13 +34,14 @@ impl Context {
 
 static SPLIT_BY_NEWLINE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(\r\n)|(\r)").expect("Invalid regex"));
+
 static CONTEXT: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(/[a-zA-Z0-9-_%]*):(running|stopped):(\d+):([a-zA-Z0-9-_%]+)(##([0-9A-Za-z]+))?")
         .expect("Invalid regex")
 });
 
-pub fn list(config: &HostConfig) {
-    let contexts = get_contexts(config);
+pub fn list(config: &HostConfig) -> Result<Response> {
+    let contexts = get_contexts(config)?;
 
     println!(
         "{0: <20} | {1: <7} | {2: <7} | {3: <20} | {4: <10}",
@@ -56,19 +57,19 @@ pub fn list(config: &HostConfig) {
             it.context_path, it.status, it.alive_session, it.context_directory, version
         );
     }
+
+    Ok(crate::error::Response::Ok(None))
 }
 
-fn get_contexts(config: &HostConfig) -> Vec<Context> {
+fn get_contexts(config: &HostConfig) -> Result<Vec<Context>> {
     let client = reqwest::blocking::Client::new();
 
-    // TODO handle each http error.
     let response = client
-        .get(config.host.join("/manager/text/list").unwrap())
+        .get(config.host.join("/manager/text/list")?)
         .basic_auth(&config.user_name, Some(&config.password))
-        .send()
-        .unwrap();
+        .send()?;
 
-    let body = response.text().unwrap();
+    let body = response.text()?;
     let lines = SPLIT_BY_NEWLINE.split(&body).skip(1);
     let mut result = Vec::new();
 
@@ -90,51 +91,35 @@ fn get_contexts(config: &HostConfig) -> Vec<Context> {
         }
     }
 
-    result
+    Ok(result)
 }
 
-pub fn deploy(config: &HostConfig, context: &str, war: &Path) {
-    let file = File::open(war).unwrap();
+pub fn deploy(config: &HostConfig, context: &str, war: &Path) -> Result<Response> {
+    let file = File::open(war)?;
     let client = reqwest::blocking::Client::new();
 
     let response = client
-        .put(config.host.join("/manager/text/deploy").unwrap())
+        .put(config.host.join("/manager/text/deploy")?)
         .basic_auth(&config.user_name, Some(&config.password))
         .query(&[("path", context)])
         .body(file)
-        .send();
+        .send()?;
 
-    match response {
-        Ok(t) => {
-            let body = t.text().unwrap();
-            let res = handle_response(&body);
-            println!("{:?}", res);
-        }
-        Err(e) => {
-            println!("{}", e);
-        }
-    };
+    let body = response.text()?;
+    Ok(handle_response(&body))
 }
 
-pub fn undeploy(config: &HostConfig, context: &str) {
+pub fn undeploy(config: &HostConfig, context: &str) -> Result<Response> {
     let client = reqwest::blocking::Client::new();
 
     let response = client
-        .get(config.host.join("/manager/text/undeploy").unwrap())
+        .get(config.host.join("/manager/text/undeploy")?)
         .basic_auth(&config.user_name, Some(&config.password))
         .query(&[("path", context)])
-        .send();
+        .send()?;
 
-    match response {
-        Ok(t) => {
-            let body = t.text().unwrap();
-            let res = handle_response(&body);
-            println!("{:?}", res);
-        }
-        Err(e) => {
-            println!("{}", e);
-        }
-    };
+    let body = response.text()?;
+    Ok(handle_response(&body))
 }
 
 fn handle_response(response: &str) -> Response {
@@ -143,16 +128,15 @@ fn handle_response(response: &str) -> Response {
             response
                 .strip_prefix("OK - ")
                 .and_then(|s| s.strip_suffix("\r\n"))
-                .expect("Unexpected response from tomcat")
-                .to_string(),
+                .map(|s| s.to_string()),
         )
     } else {
         Response::Fail(
             response
                 .strip_prefix("FAIL - ")
                 .and_then(|s| s.strip_suffix("\r\n"))
-                .expect("Unexpected response from tomcat")
-                .to_string(),
+                .and_then(|s| s.strip_suffix("\r\n"))
+                .map(|s| s.to_string()),
         )
     }
 }
