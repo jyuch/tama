@@ -113,6 +113,10 @@ pub fn undeploy(config: &HostConfig, context_path: &str) -> Result<Response> {
     tomcat_generic_command("/manager/text/undeploy", config, context_path)
 }
 
+pub fn reload(config: &HostConfig, context_path: &str) -> Result<Response> {
+    tomcat_generic_command("/manager/text/reload", config, context_path)
+}
+
 fn tomcat_generic_command(
     command: &str,
     config: &HostConfig,
@@ -142,7 +146,6 @@ fn handle_response(response: &str) -> Response {
         Response::Fail(
             response
                 .strip_prefix("FAIL - ")
-                .and_then(|s| s.strip_suffix("\r\n"))
                 .and_then(|s| s.strip_suffix("\r\n"))
                 .map(|s| s.to_string()),
         )

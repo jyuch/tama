@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use tama::error::Response;
-use tama::tomcat::{deploy, undeploy};
+use tama::tomcat::{deploy, reload, undeploy};
 use tama::{
     error::Result,
     host_config::{get_host_config, HostConfig},
@@ -58,12 +58,13 @@ enum MainAction {
 impl MainAction {
     fn handle(self, config: &HostConfig) -> Result<Response> {
         match self {
-            MainAction::List => list(config),
             MainAction::Deploy {
                 context_path,
                 war_file,
             } => deploy(config, &context_path, &war_file),
             MainAction::Undeploy { context_path } => undeploy(config, &context_path),
+            MainAction::List => list(config),
+            MainAction::Reload { context_path } => reload(config, &context_path),
             _ => unimplemented!(),
         }
     }
