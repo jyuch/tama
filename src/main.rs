@@ -22,16 +22,16 @@ enum MainAction {
     Deploy {
         /// Context path.
         #[clap(long, short)]
-        context: String,
+        context_path: String,
         /// Path to war file.
         #[clap(long, short)]
-        war: PathBuf,
+        war_file: PathBuf,
     },
     /// Undeploy an existing application.
     Undeploy {
         /// Context path.
         #[clap(long, short)]
-        context: String,
+        context_path: String,
     },
     /// List currently deployed applications.
     List,
@@ -39,19 +39,19 @@ enum MainAction {
     Reload {
         /// Context path.
         #[clap(long, short)]
-        context: String,
+        context_path: String,
     },
     /// Start an existing application.
     Start {
         /// Context path.
         #[clap(long, short)]
-        context: String,
+        context_path: String,
     },
     /// Stop an existing application.
     Stop {
         /// Context path.
         #[clap(long, short)]
-        context: String,
+        context_path: String,
     },
 }
 
@@ -59,8 +59,11 @@ impl MainAction {
     fn handle(self, config: &HostConfig) -> Result<Response> {
         match self {
             MainAction::List => list(config),
-            MainAction::Deploy { context, war } => deploy(config, &context, &war),
-            MainAction::Undeploy { context } => undeploy(config, &context),
+            MainAction::Deploy {
+                context_path,
+                war_file,
+            } => deploy(config, &context_path, &war_file),
+            MainAction::Undeploy { context_path } => undeploy(config, &context_path),
             _ => unimplemented!(),
         }
     }

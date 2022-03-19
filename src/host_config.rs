@@ -22,19 +22,19 @@ impl HostConfig {
 #[derive(Debug, Error)]
 enum HostConfigError {
     #[error("TOMCAT_HOST not set")]
-    HostError,
+    HostNotSet,
     #[error("TOMCAT_HOST is malformed")]
-    MalformedUrlError,
+    MalformedHostUrl,
     #[error("TOMCAT_USER not set")]
-    UserNameError,
+    UserNameNotSet,
     #[error("TOMCAT_PASSWORD not set")]
-    PasswordError,
+    PasswordNotSet,
 }
 
 pub fn get_host_config() -> Result<HostConfig> {
-    let host = std::env::var("TOMCAT_HOST").map_err(|_| HostConfigError::HostError)?;
-    let user_name = std::env::var("TOMCAT_USER").map_err(|_| HostConfigError::UserNameError)?;
-    let password = std::env::var("TOMCAT_PASSWORD").map_err(|_| HostConfigError::PasswordError)?;
-    let host = Url::parse(&host).map_err(|_| HostConfigError::MalformedUrlError)?;
+    let host = std::env::var("TOMCAT_HOST").map_err(|_| HostConfigError::HostNotSet)?;
+    let user_name = std::env::var("TOMCAT_USER").map_err(|_| HostConfigError::UserNameNotSet)?;
+    let password = std::env::var("TOMCAT_PASSWORD").map_err(|_| HostConfigError::PasswordNotSet)?;
+    let host = Url::parse(&host).map_err(|_| HostConfigError::MalformedHostUrl)?;
     Ok(HostConfig::new(host, user_name, password))
 }

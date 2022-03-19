@@ -94,14 +94,14 @@ fn get_contexts(config: &HostConfig) -> Result<Vec<Context>> {
     Ok(result)
 }
 
-pub fn deploy(config: &HostConfig, context: &str, war: &Path) -> Result<Response> {
-    let file = File::open(war)?;
+pub fn deploy(config: &HostConfig, context_path: &str, war_file: &Path) -> Result<Response> {
+    let file = File::open(war_file)?;
     let client = reqwest::blocking::Client::new();
 
     let response = client
         .put(config.host.join("/manager/text/deploy")?)
         .basic_auth(&config.user_name, Some(&config.password))
-        .query(&[("path", context)])
+        .query(&[("path", context_path)])
         .body(file)
         .send()?;
 
@@ -109,13 +109,21 @@ pub fn deploy(config: &HostConfig, context: &str, war: &Path) -> Result<Response
     Ok(handle_response(&body))
 }
 
-pub fn undeploy(config: &HostConfig, context: &str) -> Result<Response> {
+pub fn undeploy(config: &HostConfig, context_path: &str) -> Result<Response> {
+    tomcat_generic_command("/manager/text/undeploy", config, context_path)
+}
+
+fn tomcat_generic_command(
+    command: &str,
+    config: &HostConfig,
+    context_path: &str,
+) -> Result<Response> {
     let client = reqwest::blocking::Client::new();
 
     let response = client
-        .get(config.host.join("/manager/text/undeploy")?)
+        .get(config.host.join(command)?)
         .basic_auth(&config.user_name, Some(&config.password))
-        .query(&[("path", context)])
+        .query(&[("path", context_path)])
         .send()?;
 
     let body = response.text()?;
