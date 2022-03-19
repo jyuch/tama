@@ -82,10 +82,12 @@ fn handle_error<T>(r: Result<T>) -> T {
 }
 
 fn main() {
+    let opt = Cli::parse();
+
     let config = get_host_config();
     let config = handle_error(config);
 
-    let result: Result<Response> = Cli::parse().action.handle(&config);
+    let result: Result<Response> = opt.action.handle(&config);
     let response = handle_error(result);
 
     match response {
