@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use tama::error::Response;
-use tama::tomcat::{deploy, reload, undeploy};
+use tama::tomcat::{deploy, reload, start, stop, undeploy};
 use tama::{
     error::Result,
     host_config::{get_host_config, HostConfig},
@@ -65,7 +65,8 @@ impl MainAction {
             MainAction::Undeploy { context_path } => undeploy(config, &context_path),
             MainAction::List => list(config),
             MainAction::Reload { context_path } => reload(config, &context_path),
-            _ => unimplemented!(),
+            MainAction::Start { context_path } => start(config, &context_path),
+            MainAction::Stop { context_path } => stop(config, &context_path),
         }
     }
 }

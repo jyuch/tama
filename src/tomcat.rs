@@ -117,6 +117,14 @@ pub fn reload(config: &HostConfig, context_path: &str) -> Result<Response> {
     tomcat_generic_command("/manager/text/reload", config, context_path)
 }
 
+pub fn start(config: &HostConfig, context_path: &str) -> Result<Response> {
+    tomcat_generic_command("/manager/text/start", config, context_path)
+}
+
+pub fn stop(config: &HostConfig, context_path: &str) -> Result<Response> {
+    tomcat_generic_command("/manager/text/stop", config, context_path)
+}
+
 fn tomcat_generic_command(
     command: &str,
     config: &HostConfig,
