@@ -26,6 +26,9 @@ enum MainAction {
         /// Path to war file.
         #[clap(long, short)]
         war_file: PathBuf,
+        /// Parallel deploy.
+        #[clap(name = "parallel", long, short)]
+        is_parallel: bool,
     },
     /// Undeploy an existing application.
     Undeploy {
@@ -61,7 +64,8 @@ impl MainAction {
             MainAction::Deploy {
                 context_path,
                 war_file,
-            } => deploy(config, &context_path, &war_file),
+                is_parallel,
+            } => deploy(config, &context_path, &war_file, is_parallel),
             MainAction::Undeploy { context_path } => undeploy(config, &context_path),
             MainAction::List => list(config),
             MainAction::Reload { context_path } => reload(config, &context_path),

@@ -1,7 +1,8 @@
-use crate::error::{Response, Result};
+use crate::error::{ParallelError, Response, Result};
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -94,14 +95,47 @@ fn get_contexts(config: &HostConfig) -> Result<Vec<Context>> {
     Ok(result)
 }
 
-pub fn deploy(config: &HostConfig, context_path: &str, war_file: &Path) -> Result<Response> {
+pub fn deploy(
+    config: &HostConfig,
+    context_path: &str,
+    war_file: &Path,
+    is_parallel: bool,
+) -> Result<Response> {
+    let c: HashMap<_, _> = get_contexts(config)?
+        .into_iter()
+        .map(|it| (it.context_path.clone(), it))
+        .collect();
+
     let file = File::open(war_file)?;
     let client = reqwest::blocking::Client::new();
+
+    let current_context = c.get(context_path);
+    let mut param = Vec::new();
+    param.push(("path", context_path.to_string()));
+
+    if let Some(context) = current_context {
+        if is_parallel {
+            if let Some(current_version) = &context.context_version {
+                let current_version = current_version.parse::<i32>()?;
+                param.push(("version", format!("{:>05}", current_version + 1)));
+            } else {
+                return Err(ParallelError::Mismatch.into());
+            }
+        } else {
+            if let Some(_) = &context.context_version {
+                return Err(ParallelError::Mismatch.into());
+            }
+        }
+    } else {
+        if is_parallel {
+            param.push(("version", "00001".to_string()));
+        }
+    }
 
     let response = client
         .put(config.host.join("/manager/text/deploy")?)
         .basic_auth(&config.user_name, Some(&config.password))
-        .query(&[("path", context_path)])
+        .query(&param)
         .body(file)
         .send()?;
 
