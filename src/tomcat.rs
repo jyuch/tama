@@ -2,10 +2,10 @@ use crate::error::{OperationError, Response, Result};
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
-use reqwest::StatusCode;
 
 #[derive(Debug)]
 pub struct Context {
