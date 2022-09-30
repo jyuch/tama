@@ -1,10 +1,11 @@
-use crate::error::{ParallelError, Response, Result};
+use crate::error::{OperationError, Response, Result};
 use crate::host_config::HostConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
+use reqwest::StatusCode;
 
 #[derive(Debug)]
 pub struct Context {
@@ -70,6 +71,8 @@ fn get_contexts(config: &HostConfig) -> Result<Vec<Context>> {
         .basic_auth(&config.user_name, Some(&config.password))
         .send()?;
 
+    check_status_code(response.status())?;
+
     let body = response.text()?;
     let lines = SPLIT_BY_NEWLINE.split(&body).skip(1);
     let mut result = Vec::new();
@@ -119,10 +122,10 @@ pub fn deploy(
                 let current_version = current_version.parse::<i32>()?;
                 param.push(("version", format!("{:>05}", current_version + 1)));
             } else {
-                return Err(ParallelError::Mismatch.into());
+                return Err(OperationError::DeploymentTypeMismatch.into());
             }
         } else if context.context_version.is_some() {
-            return Err(ParallelError::Mismatch.into());
+            return Err(OperationError::DeploymentTypeMismatch.into());
         }
     } else if is_parallel {
         param.push(("version", "00001".to_string()));
@@ -135,8 +138,7 @@ pub fn deploy(
         .body(file)
         .send()?;
 
-    let body = response.text()?;
-    Ok(handle_response(&body))
+    handle_response(response)
 }
 
 pub fn undeploy(config: &HostConfig, context_path: &str) -> Result<Response> {
@@ -168,12 +170,22 @@ fn tomcat_generic_command(
         .query(&[("path", context_path)])
         .send()?;
 
-    let body = response.text()?;
-    Ok(handle_response(&body))
+    handle_response(response)
 }
 
-fn handle_response(response: &str) -> Response {
-    if response.starts_with("OK - ") {
+fn check_status_code(code: StatusCode) -> Result<()> {
+    if code.is_success() {
+        Ok(())
+    } else {
+        Err(OperationError::HttpStatusNotSuccess(code).into())
+    }
+}
+
+fn handle_response(response: reqwest::blocking::Response) -> Result<Response> {
+    check_status_code(response.status())?;
+
+    let response = response.text()?;
+    let result = if response.starts_with("OK - ") {
         Response::Ok(
             response
                 .strip_prefix("OK - ")
@@ -187,5 +199,6 @@ fn handle_response(response: &str) -> Response {
                 .and_then(|s| s.strip_suffix("\r\n"))
                 .map(|s| s.to_string()),
         )
-    }
+    };
+    Ok(result)
 }

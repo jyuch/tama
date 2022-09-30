@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -9,7 +10,10 @@ pub enum Response {
 }
 
 #[derive(Debug, Error)]
-pub enum ParallelError {
+pub enum OperationError {
     #[error("Deployment type mismatch.")]
-    Mismatch,
+    DeploymentTypeMismatch,
+
+    #[error("{0}")]
+    HttpStatusNotSuccess(StatusCode),
 }
