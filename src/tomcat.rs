@@ -59,7 +59,7 @@ pub fn list(config: &HostConfig) -> Result<Response> {
         );
     }
 
-    Ok(crate::error::Response::Ok(None))
+    Ok(Response::Ok(None))
 }
 
 fn get_contexts(config: &HostConfig) -> Result<Vec<Context>> {
@@ -121,15 +121,11 @@ pub fn deploy(
             } else {
                 return Err(ParallelError::Mismatch.into());
             }
-        } else {
-            if let Some(_) = &context.context_version {
-                return Err(ParallelError::Mismatch.into());
-            }
+        } else if context.context_version.is_some() {
+            return Err(ParallelError::Mismatch.into());
         }
-    } else {
-        if is_parallel {
-            param.push(("version", "00001".to_string()));
-        }
+    } else if is_parallel {
+        param.push(("version", "00001".to_string()));
     }
 
     let response = client

@@ -95,15 +95,15 @@ fn main() {
     let response = handle_error(result);
 
     match response {
-        tama::error::Response::Ok(Some(text)) => {
+        Response::Ok(Some(text)) => {
             println!("OK - {}", text);
             std::process::exit(0)
         }
-        tama::error::Response::Ok(None) => std::process::exit(0),
-        tama::error::Response::Fail(Some(text)) => {
+        Response::Ok(None) => std::process::exit(0),
+        Response::Fail(Some(text)) => {
             println!("FAIL - {}", text);
             std::process::exit(1)
         }
-        tama::error::Response::Fail(None) => std::process::exit(1),
+        Response::Fail(None) => std::process::exit(1),
     }
 }
